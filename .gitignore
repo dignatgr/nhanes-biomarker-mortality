@@ -4,3 +4,4 @@ data/derived/
 .Rhistory
 .RData
 *_files/
+.Rproj.user/

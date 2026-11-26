@@ -1,0 +1,39 @@
+---
+title: "00 - Download NHANES and mortality data"
+author: "Gregoire Dignat"
+format: html
+editor: source
+execute:
+  echo: true
+  warning: false
+---
+
+## Import library
+```{r}
+library(here)
+``` 
+
+## Downloads
+```{r}
+source(here("R", "download_nhanes.R"))
+fetch <- read.csv(here("config", "sources.csv"), sep = ";")
+components <- setdiff(names(fetch), c("cycle", "start_year")) 
+
+for (row in 1:nrow(fetch)) {
+  for (comp in components) {
+    tryCatch(
+      download_nhanes_file(fetch$start_year[row], fetch[[comp]][row], here("data", "raw")),
+      error = function(e) message("FAILED: ", fetch$cycle[row], " ", comp, " - ", conditionMessage(e))
+    )
+  }
+}
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
