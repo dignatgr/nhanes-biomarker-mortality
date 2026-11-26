@@ -1,0 +1,6 @@
+data/raw/
+data/derived/
+.Rproj.user/
+.Rhistory
+.RData
+*_files/
