@@ -1,0 +1,33 @@
+---
+title: "00 - Download NHANES and mortality data"
+author: "Gregoire Dignat"
+format: html
+editor: source
+execute:
+  echo: true
+  warning: false
+---
+
+## Import library
+
+```{r}
+library(here)
+library(haven)
+library(readr)
+library(dplyr)
+library(foreach)
+source(here("R", "read_nhanes.R"))
+```
+
+## merge cycles
+
+```{r}
+fetch <- read.csv(here("config", "sources.csv"), sep = ";")
+
+df_all <- foreach(i = 1:nrow(fetch), .combine = bind_rows)%do%{
+    row = fetch[i,]
+    read_cycle(row)
+}
+saveRDS(df_all, here("data", "derived", "nhanes_merged.rds"))
+
+```
