@@ -1,0 +1,130 @@
+---
+title: "02_eda"
+author: "Gregoire Dignat"
+format: html
+editor: source
+execute:
+  echo: true
+  warning: false
+---
+
+# Setup
+```{r}
+library(here)
+library(dplyr)
+library(survey)
+library(gtsummary)
+source(here("R", "derive_variables.R"))
+```
+
+## Load data and derive variables
+```{r}
+df_all <- derive_variable(readRDS(here("data", "derived", "nhanes_merged.rds")))
+```
+
+## Survey designs            
+```{r}
+design_hba1c_full <- svydesign(id = ~SDMVPSU, strata = ~SDMVSTRA, weights = ~wt_hba1c,
+                               nest = TRUE, data = df_all)
+design_hba1c <- subset(design_hba1c_full,
+  ELIGSTAT == 1 & RIDSTATR == 2 & RIDAGEYR >= 20 & PERMTH_EXM > 0 & !is.na(LBXGH))
+
+design_crp_full <- svydesign(id = ~SDMVPSU, strata = ~SDMVSTRA, weights = ~wt_crp,
+                             nest = TRUE, data = df_all)
+design_crp <- subset(design_crp_full,
+  ELIGSTAT == 1 & RIDSTATR == 2 & RIDAGEYR >= 20 & PERMTH_EXM > 0 & !is.na(LBXCRP))
+```
+
+## variables and lables
+```{r}
+vars <- c("RIDAGEYR", "sex", "race_eth", "education", "INDFMPIR", "BMXBMI",
+          "smoking", "diabetes_dx", "LBXGH", "LBXCRP")
+lab <- list(
+    RIDAGEYR ~ "Age (years)",
+    sex ~ "Sex",
+    race_eth ~ "Race / ethnicity",
+    education ~ "Education",
+    INDFMPIR ~ "Income-to-poverty ratio",
+    BMXBMI ~ "BMI (kg/m²)",
+    smoking ~ "Smoking status",
+    diabetes_dx ~ "Diagnosed diabetes",
+    LBXGH ~ "HbA1c (%)",
+    LBXCRP ~ "CRP (mg/L)"
+  )
+```
+
+## Table 1 – CRP branch
+```{r}
+tbl_crp <- tbl_svysummary(
+  design_crp,
+  by = crp_cat,   
+  include = all_of(vars),
+  label = lab,
+  statistic = list(all_continuous() ~ "{median} ({p25}, {p75})",
+                   all_categorical() ~ "{p}%"),
+  digits = all_continuous() ~ 1,
+  missing = "ifany",
+  missing_text = "Missing"
+) %>% 
+  add_overall()
+
+```
+
+## Table 1 – HbA1c branch
+```{r}
+tbl_hba1c <- tbl_svysummary(
+  design_hba1c,
+  include = all_of(vars),
+  label = lab,
+  statistic = list(all_continuous() ~ "{median} ({p25}, {p75})",
+                   all_categorical() ~ "{p}%"),
+  digits = all_continuous() ~ 1,
+  missing = "ifany",
+  missing_text = "Missing"
+) 
+
+```
+
+
+## Visualizations
+```{r}
+cat_vars <- c(sex = "Sex", race_eth = "Race / ethnicity", education = "Education",
+              smoking = "Smoking status", diabetes_dx = "Diagnosed diabetes")
+
+d <- design_crp$variables
+d$w <- weights(design_crp)
+
+# order of x labels: variable, then its levels
+lvl_order <- unlist(lapply(names(cat_vars), function(v)
+  paste(cat_vars[[v]], levels(d[[v]]), sep = " - ")))
+
+props <- d %>%
+  select(SDDSRVYR, crp_cat, w, all_of(names(cat_vars))) %>%
+  mutate(across(all_of(names(cat_vars)), as.character)) %>%
+  pivot_longer(all_of(names(cat_vars)), names_to = "var", values_to = "level") %>%
+  filter(!is.na(level)) %>%
+  group_by(var, SDDSRVYR, crp_cat) %>%
+  mutate(den = sum(w)) %>%                      # weighted denominator (non-missing only)
+  group_by(var, level, SDDSRVYR, crp_cat) %>%
+  summarise(prop = sum(w) / first(den), .groups = "drop") %>%
+  mutate(var_lab = cat_vars[var],
+         label = factor(paste(var_lab, level, sep = " - "), levels = lvl_order))
+
+ggplot(props, aes(x = label, y = prop, fill = crp_cat)) +
+  geom_boxplot(width = 0.7, linewidth = 0.3, outlier.size = 0.8) +
+  facet_grid(~var_lab, scales = "free_x", space = "free_x") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_brewer(palette = "Blues", name = "CRP") +
+  labs(x = NULL, y = "Weighted proportion across NHANES cycles",
+       caption = "Each box summarises 8 cycle-specific weighted proportions.") +
+  theme_minimal() +
+  theme(legend.position = "top", panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+
+```
+
+
+

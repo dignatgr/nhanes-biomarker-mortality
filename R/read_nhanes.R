@@ -6,7 +6,7 @@ library(dplyr)
 
 read_cycle <- function(row){
   demo = read_xpt(here("data", "raw", paste0(row$DEMO, ".xpt"))) %>% 
-    select(SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDSTATR, RIDRETH1, SDMVSTRA, SDMVPSU, WTMEC2YR, DMDEDUC2, INDFMPIR)
+    select(SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDSTATR, RIDRETH1, SDMVSTRA, SDMVPSU, WTMEC2YR, DMDEDUC2, INDFMPIR, any_of("WTMEC4YR"))
   HbA1c = read_xpt(here("data", "raw", paste0(row$HbA1c, ".xpt"))) %>% 
     select(SEQN, LBXGH)
   BMX = read_xpt(here("data", "raw", paste0(row$BMX, ".xpt"))) %>% 
