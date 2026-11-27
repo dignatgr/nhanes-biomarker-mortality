@@ -6,9 +6,18 @@ library(dplyr)
 
 read_cycle <- function(row){
   demo = read_xpt(here("data", "raw", paste0(row$DEMO, ".xpt"))) %>% 
-    select(SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDSTATR, RIDRETH1, SDMVSTRA, SDMVPSU, WTMEC2YR)
-  HbA1c = read_xpt(here("data", "raw", paste0(row$Glycohemoglobine_HbA1c, ".xpt"))) %>% 
+    select(SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDSTATR, RIDRETH1, SDMVSTRA, SDMVPSU, WTMEC2YR, DMDEDUC2, INDFMPIR)
+  HbA1c = read_xpt(here("data", "raw", paste0(row$HbA1c, ".xpt"))) %>% 
     select(SEQN, LBXGH)
+  BMX = read_xpt(here("data", "raw", paste0(row$BMX, ".xpt"))) %>% 
+    select(SEQN, BMXBMI)
+  SMQ = read_xpt(here("data", "raw", paste0(row$SMQ, ".xpt"))) %>% 
+    select(SEQN, SMQ020, SMQ040)
+  DIQ = read_xpt(here("data", "raw", paste0(row$DIQ, ".xpt"))) 
+  # In some cycles (2005-2008) the diabetic pills question is named DID070
+  if ("DID070" %in% names(DIQ)) DIQ <- rename(DIQ, DIQ070 = DID070)
+  DIQ <- select(DIQ, SEQN, DIQ010, DIQ050, DIQ070)
+  
   
   if(row$CRP == ""){
     # no CRP for this cycle: table of NA for all participants
@@ -39,6 +48,9 @@ read_cycle <- function(row){
   ) %>% 
     select(SEQN, ELIGSTAT, MORTSTAT, UCOD_LEADING, PERMTH_EXM)
   left_join(demo, HbA1c, by = "SEQN") %>% 
-    left_join(CRP, by = "SEQN") %>% 
+    left_join(CRP, by = "SEQN") %>%
+    left_join(BMX, by = "SEQN") %>%
+    left_join(SMQ, by = "SEQN") %>%
+    left_join(DIQ, by = "SEQN") %>%
     left_join(mort, by = "SEQN")
 }
